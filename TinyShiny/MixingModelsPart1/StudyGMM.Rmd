@@ -1,5 +1,5 @@
 ---
-title: "Gaussian Mixture Models study"
+title: "Gaussian Mixture Models"
 author: "Anna Kubasiak"
 date: "13 March 2017"
 output: pdf_document
@@ -15,20 +15,17 @@ library(ellipse)
 library(ggplot2)
 # library(knitr)
 ```
-This is the first chapter of Mixture Model Tutorial with R. In this chapter we will start with the simplest case of Gaussian Mixture Model where the average $\mu$ and covariance matrix $\Sigma$ of each component model is known as well as the proportion of each component $\pi$ and the number of components $K$. Our goal in this chapter will be to find out from which component distribution those points come from: $p(x_i)$
-
-## Gaussian mixture 
-In this example we will work with 2D gaussian distributions. We set:
+This is the first chapter of Mixture Model Tutorial. In this chapter we will start with the simplest case of Gaussian Mixture Model where the average $\mu$ and covariance matrix $\Sigma$ of each component model is known as well as the proportion of each component $\pi$ and the number of components $K$. Our goal in this chapter will be to find out for a set of measurements {${x_i}$}$_{i=1..N}$ from which component distribution those measurement points come from: $p(x_i)$.
 
 ```{r generate distributions, echo=FALSE, message = FALSE}
 set.seed(13)
 
 #Number of distributions
-K=3
+K=4
 d=2
 s<-0.6
 nSim<-1000
-maxMu<-4
+maxMu<-6
 # parameters of each distribution
 mu<-list()
 sigma<-list()
@@ -53,7 +50,9 @@ muDf<-as.data.frame(mu)
  names(muDf)<-paste0("mu",1:K)
  
 ```
-K=`r I(K)`
+
+## Gaussian mixture with known parapeters
+
 
 ```{r,fig.width=3, fig.height=2.8, distributions, message=FALSE, echo=FALSE}
 
@@ -72,6 +71,12 @@ for (k in 1:K){
 p+geom_point(aes(x=as.numeric(muDf[1,]),y=as.numeric(muDf[2,])),lwd=2,color=distColor$hsv)+
   geom_label(aes(x=as.numeric(muDf[1,]),y=as.numeric(muDf[2,])),label=1:K,color=as.character(distColor$hsv),nudge_x=0.5)
     
+
+dataPi=data.frame(distribution=1:length(pi),pi=pi)
+ggplot(data=dataPi,aes(x=distribution,y=pi))+
+  geom_bar(fill=distColor$hsv,stat='identity')+
+  theme_bw()+
+  ggtitle("Distributions proportions")
 # p+geom_point(data=allX, aes(x=d1,y=d2),alpha=0.5,size=0.9)
 # 
 # 
@@ -79,7 +84,10 @@ p+geom_point(aes(x=as.numeric(muDf[1,]),y=as.numeric(muDf[2,])),lwd=2,color=dist
 #     geom_path(data=as.data.frame(ellip[[k]]),aes(x,y),color=distColor$hsv[k])
 ```
 
-Then we simulate a measurment by choosing nSim=`r nSim` points in proportion $\pi$=(`r pi`).
+
+In this example we will work with 2D gaussian distributions. We set K=`r I(K)`.
+Then we simulate a measurment by choosing N=nSim=`r nSim` points in proportion $\pi$=(`r pi`).
+
 ```{r simulations, fig.width=3, fig.height=2.8,message=FALSE,echo=FALSE}
 # simulating
 x<-list()
@@ -99,4 +107,104 @@ if(d==2) {colnames(allX)<-c('x','y')}else {colnames(allX)<-paste0("d",1:d)}
  ggplot(data=data.frame(allX), aes(x = x, y = y)) + geom_point(size=1, alpha=1,color='black') +geom_density2d(lwd=0.7)+theme_bw()
 
 ```
+
+## Now what do we do?
+
+We would like to formulate the problem in terms of a function maximalization where we could use the knowledge of measurements and the parameters. 
+First we can notice that the joint probability distribution of X is complicated since it is weighted average of $K$ component distributoins. On the other hand each of the components is simple. It gives us a hint that operating on **conditional** probabilities is going to be easier. Calculating probabilities on the condition that we know which component is responsible for a measurment is straightforward. 
+
+## The latent variable 
+
+To write down the conditional probabilities we need to define a variable that tells us which condition is fulfilled. This variable will be called $z$ and it will be $K$-component vector defined for each measurment with all but one components equal to $0$ with the exception being equal to $1$: 
+
+\begin{align*}
+z_n\equiv(z_{n1},..,z_{nK}):\\
+\{z_{nk} \}_{k=1..K}\in \{0,1\},\\
+\sum_{k=1}^K z_{nk}=1
+\end{align*}
+
+The interpretation of this variable is as follows: $z_{n k}=1$ tells us that $n$-th measurment belongs to $k$-th component distribution. And since $\sum_{k=1..K}z_{nk}=1$, it belongs only to one component. 
+
+
+
+We know that the proportoins of each components are $\pi_k$. Using the new variable $z_{n}$ we can write the probability that $n$-th measurment belongs to any component as:
+
+\begin{align*}
+p(z_n)=
+ \Pi_{k=1}^K \pi_k^{z_{nk}}
+\end{align*}
+Also 
+
+\begin{align*}
+p(x_n|z_n)=\Pi_{k=1}^K \mathcal{N}(x_n|\mu_k,\Sigma_k)^{z_{nk}}
+\end{align*}
+
+And so we can write down $p(x_n)$ in terms of conditional probabilities:
+
+\begin{align*}
+p(x_n)= \sum_{z_n} p(z_n) p(x_n|z_n)=\\
+\sum_{z_n} \Pi_{k=1}^K \pi_k^{z_{nk}}\mathcal{N}(x_n|\mu_k,\Sigma_k)^{z_{nk}}=\\
+\sum_{k=1}^K \pi_k \mathcal{N}(x_n|\mu_k,\Sigma_k)
+\end{align*}
+
+
+We arrived at a very intuitive formula and the formulation that led us to it may seem excessively complicated at this point, but it allowes us to write down a closed form probabilities that take into account measurment's associatiation with a component distributon and will be very useful. 
+
+## Bayes theorem
+
+Now we can use the Bayes theorem to inverse our reasoning and find out the chances that each of our measurment points belong to each component distribution. The theorem looks innocent enough:
+
+\begin{align*}
+p(A|B)p(B)=p(B|A)p(A)
+\end{align*}
+
+It allowes to swap the condition with variable. Using it we can write:
+
+\begin{align*}
+p(z_n|x_n)p(x_n)=p(z_n)p(x_n|z_n)
+\end{align*}
+So if we choose to test any realization of $z_n$, lets say with $k-th$ component nonzero which is equivalent to asking a question: "Does my point $x_n$ belong to $k$-th component distribution?" we can write:
+
+\begin{align*}
+p(z_n: z_{nk}=1|x_n)&=&\\
+\frac{p(z_{n})p(x_n|z_n)}{p(x_n)}&=&\\
+\frac{\pi_k\mathcal{N}(x_n|\mu_k,\Sigma_k)}{\sum_{j=1}^K \pi_j \mathcal{N}(x_n|\mu_j,\Sigma_j)}&\equiv \gamma(z_{nk})&
+\end{align*}
+
+After applying this formula to our measurement data set we can estimate to which of $K$ gaussian component distributions each of them belong. 
+
+```{r posterior probabilities,echo=FALSE,message=FALSE}
+#  calculating posterior for each simulated point in allX
+normalisation<-rep(0,nrow(allX))
+for(i in 1:K){
+normalisation<- normalisation + pi[i]*dmvnorm(allX[,1:2],mean=mu[[i]],sigma=sigma[[i]])
+}
+for (i in 1:K){
+  gamma<-pi[i]*dmvnorm(allX[,1:2],mean=mu[[i]],sigma=sigma[[i]])/normalisation
+  
+  allX<-cbind(allX,gamma)
+  
+}
+colnames(allX)[3:(K+2)]<-paste0("gamma",1:K)
+```
+
+
+```{r plot estimations1, fig.width=3,fig.height=2.8,echo=FALSE,message=FALSE}
+# defining colors of each point based on gammas
+ allXColors<-as.matrix(allX[,3:(K+2)])%*%as.matrix(distColor[,2:4]) %>% round() %>% as.data.frame
+ allXColors$color<-paste0("#",as.hexmode(allXColors$distR),as.hexmode(allXColors$distG),as.hexmode(allXColors$distB))
+allX<-cbind(allX,allXColors)
+ 
+
+# plotting real distributions
+p<-ggplot(data=allX,aes(x,y))+geom_point(alpha=1/4,color=allX$color,size=1.5)+ 
+  theme_bw()
+p  
+for (k in 1:K){
+  p<-p+geom_path(data=as.data.frame(ellip[[k]]),aes(x,y),color=distColor$hsv[k])
+}
+
+p
+```
+
 
