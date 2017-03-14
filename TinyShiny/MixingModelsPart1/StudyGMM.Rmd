@@ -48,14 +48,14 @@ distColor$distB=distColor$hsv %>% substr(6,7)%>% as.hexmode %>% as.integer
 
 # prior probabilities 
 temp<-runif(K,min=0,max=1)
-pi<-temp/sum(temp)
+pi<-round(temp/sum(temp),2) 
 muDf<-as.data.frame(mu)
  names(muDf)<-paste0("mu",1:K)
  
 ```
 K=`r I(K)`
 
-```{r,fig.width=3, fig.height=3, distributions, message=FALSE, echo=FALSE}
+```{r,fig.width=3, fig.height=2.8, distributions, message=FALSE, echo=FALSE}
 
 p<-ggplot()+ 
   theme_bw()+
@@ -68,16 +68,35 @@ for (k in 1:K){
   p<-p+
     geom_path(data=as.data.frame(ellip[[k]]),aes(x,y),color=distColor$hsv[k],lwd=1.5)
     # geom_point(aes(x=mu[[k]][1],y=mu[[k]][2]),lwd=2,color=distColor$hsv[k])
-    
-}
-p+geom_point(aes(x=as.numeric(muDf[1,]),y=as.numeric(muDf[2,])),lwd=2,color=distColor$hsv)
+    }
+p+geom_point(aes(x=as.numeric(muDf[1,]),y=as.numeric(muDf[2,])),lwd=2,color=distColor$hsv)+
+  geom_label(aes(x=as.numeric(muDf[1,]),y=as.numeric(muDf[2,])),label=1:K,color=as.character(distColor$hsv),nudge_x=0.5)
     
 # p+geom_point(data=allX, aes(x=d1,y=d2),alpha=0.5,size=0.9)
 # 
 # 
 # ggplot(allX, aes(x = d1, y = d2)) + geom_point() +geom_density2d()+
 #     geom_path(data=as.data.frame(ellip[[k]]),aes(x,y),color=distColor$hsv[k])
-
 ```
 
+Then we simulate a measurment by choosing nSim=`r nSim` points in proportion $\pi$=(`r pi`).
+```{r simulations, fig.width=3, fig.height=2.8,message=FALSE,echo=FALSE}
+# simulating
+x<-list()
+allX<-NULL
+idx<-0
+xlimits<-c(0,0)
+for(i in  1:K)
+{
+  sampleSize<-round(nSim*pi[i])
+  # x[[i]]<-mvrnorm(n=sampleSize,mu=mu[[i]],Sigma=sigma[[i]])
+  x[[i]]<-rmvnorm(n=sampleSize,mean=mu[[i]],sigma=sigma[[i]])
+  
+  allX<-rbind(allX,x[[i]])
+}
+if(d==2) {colnames(allX)<-c('x','y')}else {colnames(allX)<-paste0("d",1:d)}
+
+ ggplot(data=data.frame(allX), aes(x = x, y = y)) + geom_point(size=1, alpha=1,color='black') +geom_density2d(lwd=0.7)+theme_bw()
+
+```
 
