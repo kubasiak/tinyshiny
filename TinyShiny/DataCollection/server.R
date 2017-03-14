@@ -57,24 +57,6 @@ function(input,output,session){
 
     
     
-   
-    # if (file.exists("Data/allSelectedIdxTable.csv")){
-    #   print('file exists')
-    #   df<-read.csv("Data/allSelectedIdxTable.csv",sep=";",stringsAsFactors=FALSE)
-    #   print(names(df))
-    #   ownership<-df[c("idxId","idxName","idxCategory","Owner")]
-    #   names(ownership)<-c('idxId',"Name","Category","Owner")
-    #   
-    #   df$Owner[is.na(df$Owner)]<-""
-    # }else{
-    #   print('file does not exist')
-    #   df<-data.frame(idxId=allSelectedIdx()$idxId,Name=allSelectedIdx()$idxName,
-    #                              Category=allSelectedIdx()$idxCategory)
-    #   df$Owner<-rep("",nrow(df))
-    #   
-    # }
-    
-    
     rhandsontable(df,selectCallback = TRUE,readOnly = FALSE, rowHeaders = NULL)%>%
       hot_col(names(df)[names(df)!="Owner"], readOnly = TRUE)
   })
