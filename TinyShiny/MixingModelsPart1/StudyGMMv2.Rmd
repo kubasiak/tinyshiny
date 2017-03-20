@@ -13,9 +13,82 @@ library(mcsm)
 library(mvtnorm)
 library(ellipse)
 library(ggplot2)
+# library(ggExtra)
 # library(knitr)
 ```
+
+#*To do*
+
+Motywacja dlaczego mixture models
+- Kiedy regresja nie jest dobrym podejsciem  
+- mechaniczne podejscie do regresji liniowej moze dac zupelnie bledne wyniki
+- przyklad
+- jak zrobic to lepiej
+- dlaczego mieszanki*
+
+```{r motivation, echo=FALSE, message=FALSE, fig.height=3, fig.width=6 }
+ example<-mvrnorm(10000,mu=c(0,0),Sigma=matrix(c(1,.9,.9,1),ncol=2)) %>% as.data.frame
+names(example)<-c('x','y')
+
+ linearModel<-lm('y~x',data=example)
+ a<-linearModel$coefficients[[2]] %>% round(3)
+ b<-linearModel$coefficients[[1]] %>% round(3)
+ if(b>0){lmLabel<-paste0("y=",a,"*x+",b)}else(lmLabel<-paste0("y=",a,"*x",b))
+ examplePoints<-data.frame(x=round(min(example[,1])):round(max(example[,1])))
+ lmPredicted<-predict(linearModel, examplePoints, se.fit = TRUE)$fit
+ labelPredicted<-paste0("(",examplePoints$x,",",round(lmPredicted,2),")")
+  p<-ggplot()+theme_bw()+geom_point(data=example,aes(x=x,y=y), alpha=0.05, color=hsv(0.60))
+ p
+```
+First thing coming to mind is to fit a linear regression to those points. This way we can find the most probable $y$ given any $x$:
+
+```{r motivation2, echo=FALSE, message=FALSE, fig.height=3, fig.width=6 }
+ p+ geom_abline(slope=a,intercept = b)+
+   geom_label(aes(x=mean(example[,1]),y=min(example[2])),label=lmLabel,cex=3)+
+   geom_point(aes(x=examplePoints,y=lmPredicted))+
+   geom_label(aes(x=examplePoints,y=lmPredicted),label=labelPredicted,nudge_x=0.8,cex=3)
+ 
+```
+
+What is really going on behind the scene is following:
+To calculate a value of $y$ given a $x$ we calculate **conditional** probability $p(y|x)$ based on the whole joint $p(x,y)$. Namely: if we cut our cloud of points in any section $x=x_0$ we will find some probability density of $y|x_0$'s where $E(y|x_0)$ is in fact approximated with the linear regression value $y(x_0)$:
+
+```{r motivation3, echo=FALSE, message=FALSE, fig.height=3, fig.width=6}
+
+myPoint<-examplePoints[6,1]
+dataX<-example[abs(example$x-myPoint)<0.1,1]
+dataY<-example[abs(example$x-myPoint)<0.1,2]
+
+dens<-cbind(density(dataY)$y+myPoint,density(dataY)$x)
+h<-mean(dataY)
+smallLine<-data.frame(x=c(min(dens[,1]),max(dens[,1])),y=rep(h,nrow(dens)))
+conditionalLablel<-paste0("(",myPoint,",",round(h,2),")")
+
+ p<-ggplot()+theme_bw()+geom_point(data=example,aes(x=x,y=y), alpha=0.05, color=hsv(0.60))+
+geom_point(aes(x=examplePoints,y=lmPredicted))+
+geom_vline(xintercept=myPoint)+ geom_path(aes(x=dens[,1],y=dens[,2]))+ geom_path(aes(x=smallLine[,1],y=smallLine[,2]),linetype=3)+
+   geom_label(aes(x=myPoint+max(smallLine[,1]),h),label=conditionalLablel)
+# p
+myPoint<-examplePoints[3,1]
+dataX<-example[abs(example$x-myPoint)<0.1,1]
+dataY<-example[abs(example$x-myPoint)<0.1,2]
+
+dens2<-cbind(density(dataY)$y+myPoint,density(dataY)$x)
+h2<-mean(dataY)
+smallLine2<-data.frame(x=c(min(dens2[,1]),max(dens2[,1])),y=rep(h2,nrow(dens2)))
+conditionalLablel2<-paste0("(",myPoint,",",round(h2,2),")")
+
+ p<-p+
+geom_vline(xintercept=myPoint)+ geom_path(aes(x=dens2[,1],y=dens2[,2]))+ geom_path(aes(x=smallLine2[,1],y=smallLine2[,2]),linetype=3)+
+   geom_label(aes(x=myPoint+(max(smallLine2[,1])),h2),label=conditionalLablel2)
+p
+
+```
+
+#The rest
+
 This is the first chapter of Mixture Model Tutorial. In this chapter we will start with the simplest case of Gaussian Mixture Model where the average $\mu$ and covariance matrix $\Sigma$ of each component model is known as well as the proportion of each component $\pi$ and the number of components $K$. Our goal in this chapter will be to find out for a set of measurements {${x_i}$}$_{i=1..N}$ from which component distribution those measurement points come from: $p(x_i)$.
+
 
 ```{r generate distributions, echo=FALSE, message = FALSE}
 set.seed(13)
@@ -264,6 +337,5 @@ p+geom_point(aes(x=as.numeric(fittedMuWt[1,]),y=as.numeric(fittedMuWt[2,])),colo
   geom_point(aes(x=as.numeric(muDf[1,]),y=as.numeric(muDf[2,])),color=distColor$hsv)
 
 ```
-
 
 
